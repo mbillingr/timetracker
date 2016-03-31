@@ -24,6 +24,7 @@ from PyQt4.Qt import Qt
 from worktimedialog import WorktimeDialog
 from specialdaydialog import SpecialDayDialog
 from neweventdialog import NewEventDialog
+from statisticsdialog import StatisticsDialog
 from database import WEEKDAYS
 
 
@@ -47,6 +48,8 @@ class CalendarDBWidget(qtgui.QWidget):
 
         self.neweventdialog = NewEventDialog(db, self)
 
+        self.statisticsdialog = StatisticsDialog(db)
+
         lay_tools = qtgui.QVBoxLayout()
 
         self.constraints = qtgui.QPushButton(self.style().standardIcon(qtgui.QStyle.SP_DialogApplyButton), None)
@@ -55,8 +58,13 @@ class CalendarDBWidget(qtgui.QWidget):
         self.refresh = qtgui.QPushButton(self.style().standardIcon(qtgui.QStyle.SP_BrowserReload), None)
         self.refresh.clicked.connect(self.update)
 
+        self.stats = qtgui.QPushButton(self.style().standardIcon(qtgui.QStyle.SP_ComputerIcon), None)
+        self.stats.clicked.connect(self.show_statistics)
+
         lay_tools.addWidget(self.refresh)
         lay_tools.addWidget(self.constraints)
+        lay_tools.addSpacing(10)
+        lay_tools.addWidget(self.stats)
         lay_tools.addStretch()
 
         lay_grid = qtgui.QGridLayout()
@@ -168,6 +176,10 @@ class CalendarDBWidget(qtgui.QWidget):
         self.setLayout(lay_tmp)
 
         self.update()
+
+    def show_statistics(self):
+        self.statisticsdialog.show()
+        self.statisticsdialog.raise_()
 
     def show_worktime(self):
         self.worktimedialog.show()

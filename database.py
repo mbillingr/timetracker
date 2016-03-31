@@ -218,9 +218,12 @@ class Database:
         cur.execute("SELECT date, fk_code, description FROM events JOIN eventcodes on fk_code=pk_code ORDER BY datetime(date) DESC LIMIT 1")
         return cur.fetchone()
 
-    def get_events(self, date):
+    def get_events(self, date=None):
         cur = self.con.cursor()
-        cur.execute('SELECT date, description FROM events JOIN eventcodes on fk_code=pk_code WHERE date(date)=? ORDER BY datetime(date)', [date])
+        if date is None:
+            cur.execute('SELECT date, description FROM events JOIN eventcodes on fk_code=pk_code ORDER BY datetime(date)')
+        else:
+            cur.execute('SELECT date, description FROM events JOIN eventcodes on fk_code=pk_code WHERE date(date)=? ORDER BY datetime(date)', [date])
         return cur.fetchall()
 
     def get_worktime(self, date, now=None):
