@@ -52,6 +52,9 @@ class CalendarDBWidget(qtgui.QWidget):
 
         lay_tools = qtgui.QVBoxLayout()
 
+        self.home = qtgui.QPushButton(self.style().standardIcon(qtgui.QStyle.SP_DialogHelpButton), None)
+        self.home.clicked.connect(self.go_home)
+
         self.constraints = qtgui.QPushButton(self.style().standardIcon(qtgui.QStyle.SP_DialogApplyButton), None)
         self.constraints.clicked.connect(self.show_worktime)
 
@@ -61,6 +64,7 @@ class CalendarDBWidget(qtgui.QWidget):
         self.stats = qtgui.QPushButton(self.style().standardIcon(qtgui.QStyle.SP_ComputerIcon), None)
         self.stats.clicked.connect(self.show_statistics)
 
+        lay_tools.addWidget(self.home)
         lay_tools.addWidget(self.refresh)
         lay_tools.addWidget(self.constraints)
         lay_tools.addSpacing(10)
@@ -176,6 +180,9 @@ class CalendarDBWidget(qtgui.QWidget):
         self.setLayout(lay_tmp)
 
         self.update()
+
+    def go_home(self):
+        self.calendar.setSelectedDate(datetime.now())
 
     def show_statistics(self):
         self.statisticsdialog.show()
