@@ -26,14 +26,15 @@ WEEKDAYS_SHORT = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 class Database:
     def __init__(self, dbfile='arbeitszeit.db3'):
+        self.version = '0.2'
         self.con = sqlite3.connect(dbfile, detect_types=sqlite3.PARSE_DECLTYPES)
 
         cur = self.con.cursor()
 
         if not self.check_table('misc'):
             cur.execute('CREATE TABLE misc (key TEXT UNIQUE, value TEXT)')
-
             cur.execute("INSERT INTO misc VALUES ('start_total', date('2000-01-01'))")
+            cur.execute("INSERT INTO misc VALUES ('db_version', ?)", [self.version])
 
         if not self.check_table('events'):
             cur.execute('CREATE TABLE events (date TIMESTAMP PRIMARY KEY, fk_code INT)')
@@ -108,17 +109,23 @@ class Database:
 
         if not self.check_table('workplan'):
             cur.execute('CREATE TABLE workplan (start_date TIMESTAMP PRIMARY KEY, flexible INT DEFAULT 0,'
-                        'monday INT DEFAULT 0, mon_vacation INT DEFAULT 0, mon_free INT DEFAULT 0,'
-                        'tuesday INT DEFAULT 0, tue_vacation INT DEFAULT 0, tue_free INT DEFAULT 0,'
-                        'wednesday INT DEFAULT 0, wed_vacation INT DEFAULT 0, wed_free INT DEFAULT 0,'
-                        'thursday INT DEFAULT 0, thu_vacation INT DEFAULT 0, thu_free INT DEFAULT 0,'
-                        'friday INT DEFAULT 0, fri_vacation INT DEFAULT 0, fri_free INT DEFAULT 0,'
-                        'saturday INT DEFAULT 0, sat_vacation INT DEFAULT 0, sat_free INT DEFAULT 0,'
-                        'sunday INT DEFAULT 0, sun_vacation INT DEFAULT 0, sun_free INT DEFAULT 0,'
+                        'monday INT DEFAULT 0, mon_vacation INT DEFAULT 0, mon_free INT DEFAULT 0, mon_workday BOOL DEFAULT 1,'
+                        'tuesday INT DEFAULT 0, tue_vacation INT DEFAULT 0, tue_free INT DEFAULT 0, tue_workday BOOL DEFAULT 1,'
+                        'wednesday INT DEFAULT 0, wed_vacation INT DEFAULT 0, wed_free INT DEFAULT 0, wed_workday BOOL DEFAULT 1,'
+                        'thursday INT DEFAULT 0, thu_vacation INT DEFAULT 0, thu_free INT DEFAULT 0, thu_workday BOOL DEFAULT 1,'
+                        'friday INT DEFAULT 0, fri_vacation INT DEFAULT 0, fri_free INT DEFAULT 0, fri_workday BOOL DEFAULT 1,'
+                        'saturday INT DEFAULT 0, sat_vacation INT DEFAULT 0, sat_free INT DEFAULT 0, sat_workday BOOL DEFAULT 0,'
+                        'sunday INT DEFAULT 0, sun_vacation INT DEFAULT 0, sun_free INT DEFAULT 0, sun_workday BOOL DEFAULT 0,'
                         'vacationdays_per_year INT)')
             cur.execute('INSERT INTO workplan (start_date, flexible, vacationdays_per_year) VALUES (?, 0, 0)', [datetime(2000, 1, 1)])
 
         self.con.commit()
+
+        #self.generate_testdata()
+
+        dbv = cur.execute("SELECT value FROM misc WHERE key='db_version'").fetchone()
+        if dbv is None or dbv[0] != self.version:
+            self.upgrade_database(dbv)
 
     def generate_testdata(self):
         cur = self.con.cursor()
@@ -310,6 +317,32 @@ class Database:
         cur = self.con.cursor()
         cur.execute('DELETE FROM specialdays WHERE date(date)=date(?)', [date])
         self.con.commit()
+
+    def upgrade_database(self, from_version):
+        if from_version is None and self.version == '0.2':
+            print('Upgrading database to {}'.format(self.version))
+            cur = self.con.cursor()
+            cur.execute('ALTER TABLE workplan ADD COLUMN mon_workday BOOL DEFAULT 1')
+            cur.execute('ALTER TABLE workplan ADD COLUMN tue_workday BOOL DEFAULT 1')
+            cur.execute('ALTER TABLE workplan ADD COLUMN wed_workday BOOL DEFAULT 1')
+            cur.execute('ALTER TABLE workplan ADD COLUMN thu_workday BOOL DEFAULT 1')
+            cur.execute('ALTER TABLE workplan ADD COLUMN fri_workday BOOL DEFAULT 1')
+            cur.execute('ALTER TABLE workplan ADD COLUMN sat_workday BOOL DEFAULT 0')
+            cur.execute('ALTER TABLE workplan ADD COLUMN sun_workday BOOL DEFAULT 0')
+
+            cur.execute('UPDATE workplan SET mon_workday = monday > 0')
+            cur.execute('UPDATE workplan SET tue_workday = tuesday > 0')
+            cur.execute('UPDATE workplan SET wed_workday = wednesday > 0')
+            cur.execute('UPDATE workplan SET thu_workday = thursday > 0')
+            cur.execute('UPDATE workplan SET fri_workday = friday > 0')
+            cur.execute('UPDATE workplan SET sat_workday = saturday > 0')
+            cur.execute('UPDATE workplan SET sun_workday = sunday > 0')
+
+            cur.execute("INSERT INTO misc VALUES ('db_version', ?)", [self.version])
+
+            self.con.commit()
+        else:
+            raise NotImplementedError('Cannot upgrade database from {} to {}.'.format(from_version, self.version))
 
 
 

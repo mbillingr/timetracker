@@ -35,7 +35,8 @@ def main():
     app.setApplicationName(NAME)
     app.setStyle(config.get('gui_style'))
 
-    db = Database(config.get('database'))#':memory:')
+    db = Database(config.get('database'))
+    #db = Database(':memory:')
 
     w = CalendarDBWidget(db)
     w.setWindowTitle(NAME)

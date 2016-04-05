@@ -111,6 +111,7 @@ class WorktimeDialog(qtgui.QDialog):
         self.date.setCalendarPopup(True)
 
         self.dayboxes = {ds: [TimeSpinBox() for n in range(3)] for ds in WEEKDAYS_SHORT}
+        self.daychecks = {ds: qtgui.QCheckBox(day) for day, ds in zip(WEEKDAYS, WEEKDAYS_SHORT)}
         self.vac = qtgui.QSpinBox()
         self.flex = TimeSpinBox()
 
@@ -127,7 +128,7 @@ class WorktimeDialog(qtgui.QDialog):
         lay_f.addWidget(qtgui.QLabel("Vacation"), 10, 2)
         lay_f.addWidget(qtgui.QLabel("Holiday"), 10, 3)
         for i, (day, ds) in enumerate(zip(WEEKDAYS, WEEKDAYS_SHORT)):
-            lay_f.addWidget(qtgui.QLabel(day), 11 + i, 0)
+            lay_f.addWidget(self.daychecks[ds], 11 + i, 0)
             for j in range(3):
                 lay_f.addWidget(self.dayboxes[ds][j], 11 + i, 1 + j)
                 self.dayboxes[ds][j].valueChanged.connect(self.update_sums)
@@ -177,6 +178,7 @@ class WorktimeDialog(qtgui.QDialog):
         c = self.db.get_constraints(date)
         self.date.setDate(date)
         for day, ds in zip(WEEKDAYS, WEEKDAYS_SHORT):
+            self.daychecks[ds].setChecked(c[ds.lower() + '_workday'][0])
             self.dayboxes[ds][0].setValue(c[day.lower()][0])
             self.dayboxes[ds][1].setValue(c[ds.lower() + '_vacation'][0])
             self.dayboxes[ds][2].setValue(c[ds.lower() + '_free'][0])
@@ -193,6 +195,7 @@ class WorktimeDialog(qtgui.QDialog):
              'vacationdays_per_year': self.vac.value()}
 
         for day, ds in zip(WEEKDAYS, WEEKDAYS_SHORT):
+            c[ds.lower() + '_workday'] = self.daychecks[ds].isChecked()
             c[day.lower()] = self.dayboxes[ds][0].value()
             c[ds.lower() + '_vacation'] = self.dayboxes[ds][1].value()
             c[ds.lower() + '_free'] = self.dayboxes[ds][2].value()
