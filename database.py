@@ -296,6 +296,20 @@ class Database:
 
         return timedelta(minutes=total)
 
+    def get_desiredtime(self, date):
+        cur = self.con.cursor()
+        d = date.weekday()
+        c = self.get_constraints(date)
+        special = cur.execute('SELECT fk_code FROM specialdays WHERE date(date)=?', [date]).fetchone()
+        if special is None:
+            t = c[WEEKDAYS[d].lower()][0]
+            wd = c[WEEKDAYS_SHORT[d] + '_workday'][0]
+            if wd:
+                t += wd * c['flexible'][0] / (c['mon_workday'][0] + c['tue_workday'][0] + c['wed_workday'][0] + c['thu_workday'][0] + c['fri_workday'][0] + c['sat_workday'][0] + c['sun_workday'][0])
+            return t
+        else:
+            return 0
+
     def get_vacation(self, year):
         cur = self.con.cursor()
         cur.execute("SELECT count() FROM specialdays WHERE cast(strftime('%Y', date) as INT)=? AND fk_code=2", [year])

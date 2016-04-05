@@ -16,7 +16,9 @@
 # Copyright (C) <2016> Martin Billinger
 
 
+import re
 import datetime
+import calendar
 from PyQt4 import QtGui as qtgui
 from PyQt4 import QtCore as qtcore
 from PyQt4.Qt import Qt
@@ -25,6 +27,7 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.patches import Rectangle
 import matplotlib.dates as mdates
+from matplotlib import gridspec
 import seaborn
 
 
@@ -40,11 +43,11 @@ class StatisticsDialog(qtgui.QDialog):
         lay_h = qtgui.QHBoxLayout()
 
         self.punchcard = PlotPunchcard(db)
-        self.punchcard2 = PlotPunchcard(db)
+        self.overview = PlotOverview(db)
 
         self.tabs = qtgui.QTabWidget()
         self.tabs.addTab(self.punchcard, "Punch card")
-        self.tabs.addTab(self.punchcard2, "Punch card 2")
+        self.tabs.addTab(self.overview, "Yearly overview")
 
         self.tabs.currentChanged.connect(self.changetab)
 
@@ -99,3 +102,68 @@ class PlotPunchcard(FigureCanvas):
 
         ax.set_ylim(-1, 13)
         ax.invert_yaxis()
+
+
+class PlotOverview(qtgui.QWidget):
+    def __init__(self, db):
+        self.db = db
+        self.fig = Figure()
+        self.canvas = FigureCanvas(self.fig)
+        super().__init__()
+
+        lay_v = qtgui.QVBoxLayout()
+        self.setLayout(lay_v)
+
+        self.year = qtgui.QComboBox()
+        self.year.currentIndexChanged.connect(self.plot)
+
+        lay_h = qtgui.QHBoxLayout()
+        lay_h.addWidget(self.year)
+        lay_h.addStretch(1)
+        lay_v.addLayout(lay_h)
+        lay_v.addWidget(self.canvas)
+
+        self.update()
+
+    def update(self):
+        constraints = self.db.get_constraints()
+        current_year = self.year.currentText()
+        self.year.clear()
+        years = [y for y in range(min(constraints['start_date']).year, datetime.datetime.now().year + 1)]
+        self.year.addItems([str(y) for y in years])
+        try:
+            self.year.setCurrentIndex(years.index(current_year))
+        except ValueError:
+            self.year.setCurrentIndex(len(years) - 1)
+
+    def plot(self):
+        self.fig.clf()
+        ax = self.fig.add_subplot(111)
+
+        worked = np.zeros((12, 34)) + np.nan
+
+        year = int(self.year.currentText())
+        for month in range(12):
+            for day in range(calendar.monthrange(year, month + 1)[1]):
+                date = datetime.date(year, month + 1, day + 1)
+                if date < datetime.datetime.now().date():
+                    t = self.db.get_worktime(date).total_seconds() / 60.0 - self.db.get_desiredtime(date)
+                    worked[month, day] = t
+                    ax.text(day, month, re.sub('0(?=[.])', '', ('{:.1f}'.format(t / 60))), ha='center', va='center')
+
+        worked[:, 32:] = np.nansum(worked[:, :31], axis=1, keepdims=True)
+
+        for month in range(12):
+            ax.text(32.5, month, re.sub('0(?=[.])', '', ('{:.1f}'.format(worked[month, -1] / 60))), ha='center', va='center')
+
+        ax.imshow(worked, vmin=-12*60, vmax=12*60, interpolation='none', cmap='coolwarm')
+        ax.set_xticks(np.arange(31))
+        ax.set_yticks(np.arange(12))
+        ax.set_xticklabels(1 + np.arange(31))
+        ax.set_yticklabels(calendar.month_name[1:])
+
+        self.fig.tight_layout()
+        self.canvas.draw()
+
+
+
